@@ -15,17 +15,13 @@ public final class R {
         public static int ic_folder=0x7f020001;
     }
     public static final class id {
-        public static int file_modify=0x7f060002;
-        public static int file_name=0x7f060001;
-        public static int icon=0x7f060000;
+        public static int file_modify=0x7f050002;
+        public static int file_name=0x7f050001;
+        public static int icon=0x7f050000;
     }
     public static final class layout {
         public static int list_item=0x7f030000;
         public static int main=0x7f030001;
-    }
-    public static final class string {
-        public static int app_name=0x7f050001;
-        public static int hello=0x7f050000;
     }
     public static final class xml {
         public static int mimetypes=0x7f040000;

@@ -1,5 +1,6 @@
 package andrews.fm;
 
+import android.annotation.SuppressLint;
 import android.app.*;
 import android.content.*;
 import android.net.*;
@@ -180,6 +181,7 @@ public abstract class FMActivity extends ListActivity {
 		}
 	}
 
+	@SuppressLint("AlwaysShowAction")
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		if (opts.type == FMActivity.TYPE_DIR) {
