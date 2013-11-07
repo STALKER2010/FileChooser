@@ -1,13 +1,23 @@
 package andrews.fm;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+
 import android.os.Environment;
+
 import java.io.IOException;
+
 import android.os.ParcelFileDescriptor;
+
 import java.io.FileReader;
+
 import android.content.Context;
 import android.net.Uri;
 
+/*
+ * EFile is an container for java.io.File, that allows you to read and write it quickly.
+ */
 public class EFile
 {
 	public File file = null;
@@ -48,10 +58,23 @@ public class EFile
 				}
 			} while (read >= 0);
 			res = result.toString();
+			fis.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return res;
+	}
+	public boolean saveFile(String content) {
+		try {
+			FileWriter fstream = new FileWriter(file);
+			BufferedWriter out = new BufferedWriter(fstream);
+			out.write(content);
+			out.close();
+			return true;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 	public void delete() {
 		if (file.isDirectory()) delete(file);

@@ -3,8 +3,8 @@ package andrews.fm;
 import java.io.File;
 import java.util.Comparator;
 
-public class FileComparator implements Comparator {  
-    public final int compare(Object pFirst, Object pSecond) {  
+public class FileComparator implements Comparator<File> {  
+    public final int compare(File pFirst, File pSecond) {  
 
         if(((File) pFirst).isDirectory()&&((File) pSecond).isFile()){
         	return -1;
