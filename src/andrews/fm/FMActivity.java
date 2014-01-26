@@ -40,6 +40,7 @@ public abstract class FMActivity extends ListActivity {
 	protected Options mOpts = new Options();
 	protected File mPath = mOpts.startDir;
 	protected FMAdapter mAdapter;
+	protected FileComparator mComparator = new FileComparator();
 	private ActionBar mActionBar;
 	private ActionMode mActionMode;
 
@@ -65,8 +66,6 @@ public abstract class FMActivity extends ListActivity {
 		mActionBar = getActionBar();
 		mPath = mOpts.startDir;
 		mAdapter = new FMAdapter(this, new ArrayList<File>());
-		setDirectory(mPath);
-		setListAdapter(mAdapter);
 		ListView listView = getListView();
 		listView.setLongClickable(mOpts.allowFSModifying);
 		if (mOpts.allowFSModifying) {
@@ -83,7 +82,6 @@ public abstract class FMActivity extends ListActivity {
 				}
 			});
 		}
-		mActionBar.setSubtitle(mPath.getAbsolutePath());
 		listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 				File sel = mAdapter.getItem(position);
@@ -105,16 +103,20 @@ public abstract class FMActivity extends ListActivity {
 				}
 			}
 		});
+		setListAdapter(mAdapter);
+		setDirectory(mPath);
 	}
 
-	private void setDirectory(File newPath) {
-		mPath = newPath;
-		List<File> files = Arrays.asList(mPath.listFiles(fileFilter));
-		Collections.sort(files, new FileComparator());
-		mAdapter.clear();
-		mAdapter.addAll(files);
-		mAdapter.notifyDataSetInvalidated();
-		mActionBar.setSubtitle(mPath.getAbsolutePath());
+	protected void setDirectory(File newPath) {
+		if (newPath.isDirectory()) {
+			this.mPath = newPath;
+			List<File> files = Arrays.asList(mPath.listFiles(fileFilter));
+			Collections.sort(files, mComparator);
+			mAdapter.clear();
+			mAdapter.addAll(files);
+			mAdapter.notifyDataSetChanged();
+			mActionBar.setSubtitle(mPath.getAbsolutePath());
+		}
 	}
 
 	@Override
@@ -262,25 +264,28 @@ public abstract class FMActivity extends ListActivity {
 		}
 	};
 
-	private FilenameFilter fileFilter = new FilenameFilter() {
+	protected FilenameFilter fileFilter = new FilenameFilter() {
 		public boolean accept(File dir, String name) {
 			return (mOpts.ext.equalsIgnoreCase("*")) ? true : name.toLowerCase(Locale.US).endsWith("." + mOpts.ext);
 		}
 	};
 
-	public class FMAdapter extends ArrayAdapter<File> {
+	public static class FMAdapter extends ArrayAdapter<File> {
 		private List<File> mData;
 		private LayoutInflater mInflater;
+		private static int layout_id = R.layout.list_item;
 
 		public FMAdapter(Context context, List<File> objects) {
-			super(context, R.layout.list_item, objects);
+			super(context, layout_id, objects);
 			this.mData = objects;
 			this.mInflater = (LayoutInflater) context.getSystemService(Activity.LAYOUT_INFLATER_SERVICE);
 		}
 
 		@Override
-		public View getView(int position, View convertView, ViewGroup parent) {
-			View v = mInflater.inflate(R.layout.list_item, null);
+		public View getView(int position, View v, ViewGroup parent) {
+			if (v == null) {
+				v = mInflater.inflate(layout_id, parent, false);
+			}
 			File cur = mData.get(position);
 			TextView fname = (TextView) v.findViewById(R.id.file_name);
 			TextView finfo = (TextView) v.findViewById(R.id.file_info);
