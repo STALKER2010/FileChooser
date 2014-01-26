@@ -1,5 +1,6 @@
-package andrews.fm;
+package andrews.fm.utils;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,7 +49,7 @@ public class MimeTypes {
 	
 	public String getMimeType(Uri uri) {
 	
-		return getMimeType(FileUtils.getFile(uri).getName());	
+		return getMimeType(new File(uri.getPath()).getName());
 	}
 	
 }

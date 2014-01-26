@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="rename">Переименовать</string>
+    <string name="rename_title">Переименование файла</string>
+    <string name="delete">Удалить</string>
+    <string name="delete_title">Удаление файла</string>
+    <string name="delete_confirm">Вы уверены, что хотите удалить данный файл?</string>
+    <string name="quit_confirm">Вы уверены, что хотите выйти?</string>
+    <string name="select">Выбрать</string>
+
+</resources>

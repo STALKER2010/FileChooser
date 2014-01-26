@@ -4,15 +4,15 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:orientation="horizontal"
-    android:padding="5dip" >
+    android:padding="5dip"
+    tools:ignore="HardcodedText" >
 
     <ImageView
-        android:id="@+id/icon"
+        android:id="@+id/file_icon"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:contentDescription="Icon of file"
-        android:paddingLeft="10dp"
-        tools:ignore="HardcodedText" />
+        android:paddingLeft="10dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -24,16 +24,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:text="File name"
             android:textColor="#00ff00"
-            android:textSize="16dp" />
+            android:textSize="18sp" />
 
         <TextView
-            android:id="@+id/file_modify"
+            android:id="@+id/file_info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:text="File info"
             android:textColor="#90893b"
-            android:textSize="12dp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
 </LinearLayout>

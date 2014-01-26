@@ -1,193 +1,128 @@
 package andrews.fm;
 
-import android.annotation.SuppressLint;
-import android.app.*;
-import android.content.*;
-import android.net.*;
-import android.os.*;
-import android.view.*;
-import android.widget.*;
-import java.io.*;
-import java.text.*;
-import java.util.*;
-import andrews.fm.R;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+
+import andrews.fm.utils.FileComparator;
+import andrews.fm.utils.FileUtils;
+import andrews.fm.utils.MimeTypes;
+import android.app.ActionBar;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ListActivity;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Environment;
+import android.view.ActionMode;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.TextView;
 
 public abstract class FMActivity extends ListActivity {
-	protected File path = null;
-	protected File[] cur = null;
-	protected ActionBar ab;
-	private final int LONGPRESS = 1;
-	private int index = 0;
-	public static final int TYPE_FILE = 0;
-	public static final int TYPE_DIR = 1;
-	protected Options opts = new Options();
+	protected Options mOpts = new Options();
+	protected File mPath = mOpts.startDir;
+	protected FMAdapter mAdapter;
+	private ActionBar mActionBar;
+	private ActionMode mActionMode;
 
-	public void inflateList(File[] fs) {
-		List<Map<String, Object>> listItems = new ArrayList<Map<String, Object>>();
-		Arrays.sort(fs, new FileComparator());
-		for (File f : fs) {
-			EFile fl = new EFile(f);
-			Map<String, Object> listItem = new HashMap<String, Object>();
-			if (fl.file.isDirectory()) {
-				listItem.put("icon", R.drawable.ic_folder);
-			} else {
-
-				listItem.put("icon", R.drawable.ic_file);
-			}
-			listItem.put("filename", fl.file.getName());
-			long modTime = fl.file.lastModified();
-			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			String sz = ((!fl.file.isDirectory()) ? " " + fl.size() : "");
-			listItem.put("modify", dateFormat.format(new Date(modTime)) + sz);
-			listItems.add(listItem);
-		}
-		SimpleAdapter adapter = new SimpleAdapter(FMActivity.this, listItems, R.layout.list_item, new String[] {
-				"filename", "icon", "modify" }, new int[] { R.id.file_name, R.id.icon, R.id.file_modify });
-		setListAdapter(adapter);
-	}
-
-	protected Dialog onCreateDialog(int id) {
-		if (id == LONGPRESS && opts.allowFSModifying) {
-			final File f = cur[index];
-			return new AlertDialog.Builder(FMActivity.this).setItems(new String[] { "Rename", "Delete" },
-					new DialogInterface.OnClickListener() {
-						public void onClick(DialogInterface dialog, int which) {
-							switch (which) {
-							case 0:
-								final EditText et = new EditText(FMActivity.this);
-								et.setText(f.getName());
-								new AlertDialog.Builder(FMActivity.this)
-										.setTitle(opts.app_name + ": New name")
-										.setView(et)
-										.setPositiveButton(getString(android.R.string.ok),
-												new DialogInterface.OnClickListener() {
-													@Override
-													public void onClick(DialogInterface dialog, int which) {
-														String newName = et.getText().toString();
-														newName = f.getParentFile() + "/" + newName;
-														f.renameTo(new File(newName));
-														cur = path.listFiles();
-														inflateList(cur);
-													}
-												}).setNegativeButton(getString(android.R.string.cancel), null).show();
-								break;
-							case 1:
-								new AlertDialog.Builder(FMActivity.this)
-										.setTitle(opts.app_name)
-										.setMessage("Are you sure you want delete it?")
-										.setPositiveButton(getString(android.R.string.ok),
-												new DialogInterface.OnClickListener() {
-													@Override
-													public void onClick(DialogInterface dialog, int which) {
-														delete(f);
-														cur = path.listFiles();
-														inflateList(cur);
-													}
-
-													public void delete(File file) {
-														for (File c : file.listFiles()) {
-															if (c.isDirectory())
-																delete(c);
-															c.delete();
-														}
-													}
-												}).setNegativeButton(getString(android.R.string.cancel), null).show();
-								break;
-							}
-						}
-					}).create();
-		}
-		return null;
-	}
-
-	public boolean onKeyDown(int paramInt, KeyEvent paramKeyEvent) {
-		if (paramInt == KeyEvent.KEYCODE_BACK)
-			try {
-				if (!path.getCanonicalPath().equals("/")) {
-					path = path.getParentFile();
-					cur = path.listFiles();
-					inflateList(cur);
-					if (opts.changeActionBar)
-						ab.setSubtitle(path.getAbsolutePath());
-				} else {
-					AlertDialog.Builder localBuilder = new AlertDialog.Builder(this);
-					localBuilder.setTitle(opts.app_name);
-					localBuilder.setMessage("Are you sure you want to quit?");
-					localBuilder.setPositiveButton(getString(android.R.string.yes),
-							new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface paramAnonymousDialogInterface, int paramAnonymousInt) {
-									onCancel(null);
-									finish();
-								}
-							});
-					localBuilder.setNegativeButton(getString(android.R.string.no), null);
-					localBuilder.create().show();
+	@Override
+	public void onBackPressed() {
+		if (!mPath.getAbsolutePath().equals("/"))
+			setDirectory(mPath.getParentFile());
+		else if (mOpts.showExitConfirmation) {
+			AlertDialog.Builder b = new AlertDialog.Builder(this);
+			b.setTitle(mOpts.app_name);
+			b.setMessage(R.string.quit_confirm);
+			b.setPositiveButton(getString(android.R.string.yes), new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					onCancel(null);
 				}
-			} catch (Exception localException) {
-			}
-		return false;
+			});
+			b.setNegativeButton(getString(android.R.string.no), null);
+			b.create().show();
+		}
 	}
 
 	public final void choose() {
-		setContentView(R.layout.main);
-		ab = getActionBar();
-		path = opts.startDir;
-		cur = path.listFiles();
-		final ListView ls = getListView();
-		if (opts.changeActionBar)
-			ab.setSubtitle(path.getAbsolutePath());
-		try {
-			if (!opts.changeActionBar && opts.type == FMActivity.TYPE_DIR)
-				throw new Exception("Impossible. We must change ActionBar for directory selection.");
-		} catch (Exception e) {
-			onCancel(e);
-		}
-		inflateList(cur);
-		ls.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-			public void onItemClick(AdapterView<?> p1, View p2, int p3, long p4) {
-				File sel = cur[p3];
-				if (sel.isDirectory()) {
-					path = sel;
-					cur = path.listFiles(new FilenameFilter() {
-						public boolean accept(File dir, String name) {
-							return (opts.ext.equalsIgnoreCase("*")) ? true : name.toLowerCase()
-									.endsWith("." + opts.ext);
-						}
-					});
-					inflateList(cur);
-					if (opts.changeActionBar)
-						ab.setSubtitle(path.getAbsolutePath());
+		mActionBar = getActionBar();
+		mPath = mOpts.startDir;
+		mAdapter = new FMAdapter(this, new ArrayList<File>());
+		setDirectory(mPath);
+		setListAdapter(mAdapter);
+		ListView listView = getListView();
+		listView.setLongClickable(mOpts.allowFSModifying);
+		if (mOpts.allowFSModifying) {
+			listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+				@Override
+				public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+					if (mActionMode != null) {
+						return false;
+					}
+
+					mActionMode = startActionMode(new FMActionCallback(mAdapter.getItem(position)));
+					view.setSelected(true);
+					return true;
 				}
-				if (sel.isFile()) {
-					if (opts.type == FMActivity.TYPE_DIR) {
+			});
+		}
+		mActionBar.setSubtitle(mPath.getAbsolutePath());
+		listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				File sel = mAdapter.getItem(position);
+				if (sel.isDirectory())
+					setDirectory(sel);
+				else {
+					switch (mOpts.type) {
+					case Options.TYPE_DIR:
 						Intent intent = new Intent(Intent.ACTION_VIEW);
 						final Uri apkuri = Uri.fromFile(sel);
 						intent.setDataAndType(apkuri, new MimeTypes().getMimeType(apkuri));
 						startActivity(intent);
-					} else if (opts.type == FMActivity.TYPE_FILE) {
+						break;
+					case Options.TYPE_FILE:
 						onSelect(sel);
+					default:
+						break;
 					}
 				}
 			}
 		});
-		if (opts.allowFSModifying) {
-			ls.setOnLongClickListener(new View.OnLongClickListener() {
-				public boolean onLongClick(View p1) {
-					index = ls.indexOfChild(p1);
-					showDialog(LONGPRESS);
-					return false;
-				}
-			});
-		}
 	}
 
-	@SuppressLint("AlwaysShowAction")
+	private void setDirectory(File newPath) {
+		mPath = newPath;
+		List<File> files = Arrays.asList(mPath.listFiles(fileFilter));
+		Collections.sort(files, new FileComparator());
+		mAdapter.clear();
+		mAdapter.addAll(files);
+		mAdapter.notifyDataSetInvalidated();
+		mActionBar.setSubtitle(mPath.getAbsolutePath());
+	}
+
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		if (opts.type == FMActivity.TYPE_DIR) {
-			menu.add("Select").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+		if (mOpts.type == Options.TYPE_DIR) {
+			menu.add(R.string.select).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
 				public boolean onMenuItemClick(MenuItem p1) {
-					onSelect(new File(path.getAbsolutePath()));
+					onSelect(new File(mPath.getAbsolutePath()));
 					return false;
 				}
 			}).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
@@ -197,15 +132,171 @@ public abstract class FMActivity extends ListActivity {
 
 	public abstract void onSelect(File file);
 
-	public abstract void onCancel(Exception e);
+	public void onCancel(Exception e) {
+		finish();
+	}
 
+	/**
+	 * Options class for FMActivity
+	 * 
+	 * @author STALKER_2010
+	 */
 	public class Options {
-		public int type = FMActivity.TYPE_FILE;
-		public boolean changeActionBar = true;
-		public boolean allowFSModifying = true;
-		public boolean root = false;
-		public File startDir = Environment.getExternalStorageDirectory();
+		public static final int TYPE_FILE = 0;
+		public static final int TYPE_DIR = 1;
+		public int type = Options.TYPE_FILE;
 		public String app_name = "File Chooser";
+
+		/**
+		 * Allow renaming and deleting files or not.
+		 */
+		public boolean allowFSModifying = true;
+		/**
+		 * Directory to start browsing from.
+		 */
+		public File startDir = Environment.getExternalStorageDirectory();
+		/**
+		 * Extension for filtering files WITHOUT DOT!
+		 */
 		public String ext = "*";
+		/**
+		 * Shall we show confirmation dialog on exit?
+		 */
+		public boolean showExitConfirmation = true;
+	}
+
+	private class FMActionCallback implements ActionMode.Callback {
+		private File mFile;
+
+		public FMActionCallback(File f) {
+			this.mFile = f;
+		}
+
+		@Override
+		public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+			MenuInflater inflater = mode.getMenuInflater();
+			inflater.inflate(R.menu.filechooser_edit_menu, menu);
+			return true;
+		}
+
+		@Override
+		public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+			return false;
+		}
+
+		@Override
+		public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+			int itemId = item.getItemId();
+			if (itemId == R.id.action_rename) {
+				rename();
+				mode.finish();
+				return true;
+			} else if (itemId == R.id.action_delete) {
+				delete();
+				mode.finish();
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		@Override
+		public void onDestroyActionMode(ActionMode mode) {
+			mActionMode = null;
+		}
+
+		public void rename() {
+			AlertDialog.Builder b = new AlertDialog.Builder(FMActivity.this);
+			b.setTitle(mOpts.app_name + " - " + getString(R.string.rename_title));
+			LinearLayout layout = new LinearLayout(FMActivity.this);
+			ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+					LinearLayout.LayoutParams.WRAP_CONTENT);
+			layout.setLayoutParams(params);
+			final EditText mField = new EditText(FMActivity.this);
+			mField.setLayoutParams(params);
+			layout.addView(mField);
+			b.setView(layout);
+			b.setPositiveButton(getString(android.R.string.ok), new DialogInterface.OnClickListener() {
+				private static final String ReservedChars = "|\\?*<\":>+[]/'";
+
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					rename(mField.getText().toString());
+					setDirectory(mPath);
+				}
+
+				public boolean rename(String newName) {
+					for (char c : ReservedChars.toCharArray()) {
+						newName = newName.replace(c, '_');
+					}
+					File parent = mFile.getParentFile();
+					File newFile = new File(parent, newName);
+					return mFile.renameTo(newFile);
+				}
+			});
+			b.setNegativeButton(getString(android.R.string.cancel), null);
+			b.show();
+		}
+
+		public void delete() {
+			AlertDialog.Builder b = new AlertDialog.Builder(FMActivity.this);
+			b.setTitle(mOpts.app_name);
+			b.setMessage(R.string.delete_confirm);
+			b.setPositiveButton(getString(android.R.string.ok), new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					delete(mFile);
+					setDirectory(mPath);
+				}
+
+				public void delete(File file) {
+					for (File c : file.listFiles()) {
+						if (c.isDirectory())
+							delete(c);
+						c.delete();
+					}
+				}
+			});
+			b.setNegativeButton(getString(android.R.string.cancel), null);
+			b.show();
+		}
+	};
+
+	private FilenameFilter fileFilter = new FilenameFilter() {
+		public boolean accept(File dir, String name) {
+			return (mOpts.ext.equalsIgnoreCase("*")) ? true : name.toLowerCase(Locale.US).endsWith("." + mOpts.ext);
+		}
+	};
+
+	public class FMAdapter extends ArrayAdapter<File> {
+		private List<File> mData;
+		private LayoutInflater mInflater;
+
+		public FMAdapter(Context context, List<File> objects) {
+			super(context, R.layout.list_item, objects);
+			this.mData = objects;
+			this.mInflater = (LayoutInflater) context.getSystemService(Activity.LAYOUT_INFLATER_SERVICE);
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			View v = mInflater.inflate(R.layout.list_item, null);
+			File cur = mData.get(position);
+			TextView fname = (TextView) v.findViewById(R.id.file_name);
+			TextView finfo = (TextView) v.findViewById(R.id.file_info);
+			ImageView ficon = (ImageView) v.findViewById(R.id.file_icon);
+			fname.setText(cur.getName());
+			long lastModified = cur.lastModified();
+			String info = DateFormat.getInstance().format(lastModified);
+			info += "  ";
+			if (cur.isFile()) {
+				info += FileUtils.getReadableFileSize(cur.length());
+			} else {
+				info += "dir";
+			}
+			finfo.setText(info);
+			ficon.setImageResource(cur.isDirectory() ? R.drawable.ic_folder : R.drawable.ic_file);
+			return v;
+		}
 	}
 }
