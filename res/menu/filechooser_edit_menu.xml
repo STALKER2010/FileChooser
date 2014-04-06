@@ -6,7 +6,6 @@
         android:icon="@android:drawable/ic_menu_edit"
         android:showAsAction="ifRoom"
         android:title="@string/rename"/>
-    
     <item
         android:id="@+id/action_delete"
         android:icon="@android:drawable/ic_menu_delete"

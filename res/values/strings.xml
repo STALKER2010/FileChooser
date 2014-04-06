@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">File Chooser</string>
+    <string name="app_name" translatable="false">File Chooser</string>
     <string name="rename">Rename</string>
     <string name="rename_title">Rename file</string>
     <string name="delete">Delete</string>
